@@ -46,11 +46,35 @@ export interface EditorElement {
   rotation?: number;
 }
 
+export type SocialPlatform = 'facebook' | 'instagram' | 'whatsapp';
+
+export type PostFormat = 'feed' | 'story';
+
+export interface PosterDimension {
+  width: number;
+  height: number;
+  aspectRatio: string;
+  name: string;
+}
+
+export interface PlatformDimensions {
+  platform: SocialPlatform;
+  feedDimensions: PosterDimension[];
+  storyDimensions: PosterDimension[];
+}
+
 export interface EditorState {
   backgroundImage: string | null;
   overlayOpacity: number;
   elements: EditorElement[];
   selectedElementId: string | null;
+  canvasDimensions?: {
+    width: number;
+    height: number;
+    platform: SocialPlatform;
+    format: PostFormat;
+    name: string;
+  };
 }
 
 export type ToolType = 'select' | 'text' | 'rectangle' | 'circle';

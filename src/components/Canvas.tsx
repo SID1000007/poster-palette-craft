@@ -372,36 +372,75 @@ const Canvas: React.FC<CanvasProps> = ({
         return null;
     }
   };
+
+  // Calculate canvas dimensions based on selected dimensions or default to fill container
+  const canvasStyle: React.CSSProperties = {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  };
+
+  // If we have specific dimensions set, apply them
+  if (editorState.canvasDimensions) {
+    const { width, height } = editorState.canvasDimensions;
+    const containerWidth = canvasRef.current?.parentElement?.clientWidth || 0;
+    const containerHeight = canvasRef.current?.parentElement?.clientHeight || 0;
+    
+    // Calculate the scale to fit the canvas inside the container
+    const scaleX = containerWidth / width;
+    const scaleY = containerHeight / height;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down if needed
+    
+    canvasStyle.width = `${width}px`;
+    canvasStyle.height = `${height}px`;
+    canvasStyle.transform = `scale(${scale})`;
+    canvasStyle.transformOrigin = 'top left';
+    canvasStyle.margin = 'auto';
+  }
   
   return (
-    <div
-      ref={canvasRef}
-      className="editor-canvas relative w-full h-full"
-      onClick={handleCanvasClick}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    >
-      {/* Background Image */}
-      {editorState.backgroundImage && (
-        <img
-          src={editorState.backgroundImage}
-          alt="Background"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      )}
-      
-      {/* Overlay */}
+    <div className="editor-canvas-container relative w-full h-full flex items-center justify-center bg-gray-800 overflow-auto">
       <div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: 'black',
-          opacity: editorState.overlayOpacity,
-        }}
-      />
+        ref={canvasRef}
+        className="editor-canvas"
+        style={canvasStyle}
+        onClick={handleCanvasClick}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Background Image */}
+        {editorState.backgroundImage && (
+          <img
+            src={editorState.backgroundImage}
+            alt="Background"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        
+        {/* Overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundColor: 'black',
+            opacity: editorState.overlayOpacity,
+          }}
+        />
+        
+        {/* Editor Elements */}
+        {editorState.elements.map((element) => renderElement(element))}
+      </div>
       
-      {/* Editor Elements */}
-      {editorState.elements.map((element) => renderElement(element))}
+      {/* Display canvas dimensions if set */}
+      {editorState.canvasDimensions && (
+        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+          {editorState.canvasDimensions.width} × {editorState.canvasDimensions.height}px
+          <span className="ml-2">
+            {editorState.canvasDimensions.platform} ({editorState.canvasDimensions.format})
+          </span>
+        </div>
+      )}
     </div>
   );
 };

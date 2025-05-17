@@ -1,15 +1,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { EditorState, EditorElement, ToolType } from '../types';
+import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat } from '../types';
 import Canvas from '../components/Canvas';
 import Toolbar from '../components/Toolbar';
 import OverlayControls from '../components/OverlayControls';
 import TextEditor from '../components/TextEditor';
 import ShapeEditor from '../components/ShapeEditor';
+import DimensionSelector from '../components/DimensionSelector';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import html2canvas from 'html2canvas';
+import { v4 as uuidv4 } from 'uuid';
 
 interface LocationState {
   backgroundImage: string;
@@ -25,6 +27,13 @@ const Editor = () => {
     overlayOpacity: 0.3,
     elements: [],
     selectedElementId: null,
+    canvasDimensions: {
+      width: 1080,
+      height: 1080,
+      platform: 'instagram',
+      format: 'feed',
+      name: 'Square (1:1)'
+    }
   });
 
   // Load background image from route state
@@ -33,30 +42,30 @@ const Editor = () => {
     if (!state || !state.backgroundImage) {
       // For development, let's use a placeholder if no image is provided
       const placeholderImage = 'https://images.pexels.com/photos/1323550/pexels-photo-1323550.jpeg';
-      setEditorState({
-        ...editorState,
+      setEditorState(prevState => ({
+        ...prevState,
         backgroundImage: placeholderImage,
-      });
+      }));
       
       // Still show a toast for better UX
       toast("Using placeholder image. To start properly, select an image from the home page.");
       return;
     }
 
-    setEditorState({
-      ...editorState,
+    setEditorState(prevState => ({
+      ...prevState,
       backgroundImage: state.backgroundImage,
-    });
+    }));
   }, []);
 
   // Handle tool selection
   const handleToolChange = (tool: ToolType) => {
     setActiveTool(tool);
     if (tool !== 'select') {
-      setEditorState({
-        ...editorState,
+      setEditorState(prevState => ({
+        ...prevState,
         selectedElementId: null,
-      });
+      }));
     }
   };
 
@@ -105,6 +114,28 @@ const Editor = () => {
       ...prevState,
       overlayOpacity: opacity,
     }));
+  };
+
+  // Handle poster dimension change
+  const handleDimensionChange = (
+    platform: SocialPlatform, 
+    format: PostFormat, 
+    width: number, 
+    height: number,
+    name: string
+  ) => {
+    setEditorState(prevState => ({
+      ...prevState,
+      canvasDimensions: {
+        width,
+        height,
+        platform,
+        format,
+        name
+      }
+    }));
+    
+    toast(`Canvas dimensions set to ${width}×${height}px for ${platform} ${format}`);
   };
 
   // Handle layer ordering
@@ -168,25 +199,42 @@ const Editor = () => {
     try {
       toast("Preparing your poster for download...");
       
-      // Temporarily hide selection borders for screenshot
-      const selectedElement = editorState.selectedElementId 
-        ? document.querySelector(`[data-id="${editorState.selectedElementId}"]`) 
-        : null;
-      
-      if (selectedElement instanceof HTMLElement) {
-        selectedElement.style.border = 'none';
+      // Find the actual canvas element inside our container
+      const canvasElement = canvasRef.current.querySelector('.editor-canvas');
+      if (!canvasElement) {
+        toast.error("Could not find canvas element");
+        return;
       }
       
-      const canvas = await html2canvas(canvasRef.current, {
+      // Temporarily hide selection borders for screenshot
+      const selectedElements = document.querySelectorAll('.editor-element[data-id]');
+      const originalStyles = Array.from(selectedElements).map(el => {
+        const style = (el as HTMLElement).style.border;
+        (el as HTMLElement).style.border = 'none';
+        return style;
+      });
+      
+      // Also hide resize handles
+      const resizeHandles = document.querySelectorAll('.resize-handle');
+      resizeHandles.forEach(handle => {
+        (handle as HTMLElement).style.display = 'none';
+      });
+      
+      const canvas = await html2canvas(canvasElement as HTMLElement, {
         allowTaint: true,
         useCORS: true,
         scale: 2,
       });
       
-      // Restore selection border
-      if (selectedElement instanceof HTMLElement) {
-        selectedElement.style.border = '2px dashed #9b87f5';
-      }
+      // Restore selection borders
+      selectedElements.forEach((el, i) => {
+        (el as HTMLElement).style.border = originalStyles[i];
+      });
+      
+      // Restore resize handles
+      resizeHandles.forEach(handle => {
+        (handle as HTMLElement).style.display = 'block';
+      });
       
       // Convert canvas to blob
       canvas.toBlob((blob) => {
@@ -197,7 +245,14 @@ const Editor = () => {
         
         // Create download link
         const link = document.createElement('a');
-        link.download = 'poster.png';
+        
+        // Generate filename based on dimensions
+        const dimensions = editorState.canvasDimensions;
+        const filename = dimensions
+          ? `poster_${dimensions.platform}_${dimensions.format}_${dimensions.width}x${dimensions.height}.png`
+          : 'poster.png';
+          
+        link.download = filename;
         link.href = URL.createObjectURL(blob);
         link.click();
         
@@ -258,8 +313,20 @@ const Editor = () => {
         <div className="w-full md:w-80 p-4 border-t md:border-t-0 md:border-l border-muted">
           <h2 className="text-xl font-semibold mb-4">Properties</h2>
           
+          {/* Add DimensionSelector component */}
+          <DimensionSelector
+            onDimensionChange={handleDimensionChange}
+            selectedPlatform={editorState.canvasDimensions?.platform}
+            selectedFormat={editorState.canvasDimensions?.format}
+            selectedDimension={editorState.canvasDimensions ? {
+              width: editorState.canvasDimensions.width,
+              height: editorState.canvasDimensions.height,
+              name: editorState.canvasDimensions.name
+            } : undefined}
+          />
+          
           {selectedElement ? (
-            <>
+            <div className="mt-6">
               {selectedElement.type === 'text' ? (
                 <TextEditor 
                   element={selectedElement}
@@ -309,9 +376,9 @@ const Editor = () => {
                   Delete Element
                 </Button>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="text-muted-foreground p-4 bg-muted rounded-lg">
+            <div className="text-muted-foreground p-4 bg-muted rounded-lg mt-6">
               <p>Select an element or use the toolbar to add new elements.</p>
               <p className="mt-2">Keyboard shortcuts:</p>
               <ul className="mt-2 list-disc pl-5">
