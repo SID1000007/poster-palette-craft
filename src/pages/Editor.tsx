@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditorState, EditorElement, ToolType } from '../types';
@@ -309,8 +308,8 @@ const Editor = () => {
                 <li>Delete/Backspace: Delete selected element</li>
                 <li>Ctrl + [: Move backward</li>
                 <li>Ctrl + ]: Move forward</li>
-                <li>Ctrl + {'{}: Send to back</li>
-                <li>Ctrl + {'}'}: Bring to front</li>
+                <li>Ctrl + {"{{"}: Send to back</li>
+                <li>Ctrl + {"}}"}: Bring to front</li>
               </ul>
             </div>
           )}
