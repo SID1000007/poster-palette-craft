@@ -206,12 +206,14 @@ const Editor = () => {
         return;
       }
       
-      // Temporarily hide selection borders for screenshot
-      const selectedElements = document.querySelectorAll('.editor-element[data-id]');
+      // Temporarily hide selection borders and resize handles for screenshot
+      const selectedElements = document.querySelectorAll('.editor-element');
       const originalStyles = Array.from(selectedElements).map(el => {
         const style = (el as HTMLElement).style.border;
+        const outline = (el as HTMLElement).style.outline;
         (el as HTMLElement).style.border = 'none';
-        return style;
+        (el as HTMLElement).style.outline = 'none';
+        return { border: style, outline: outline };
       });
       
       // Also hide resize handles
@@ -220,15 +222,31 @@ const Editor = () => {
         (handle as HTMLElement).style.display = 'none';
       });
       
+      // Use html2canvas with improved settings for more accurate rendering
       const canvas = await html2canvas(canvasElement as HTMLElement, {
         allowTaint: true,
         useCORS: true,
-        scale: 2,
+        scale: 2, // Higher scale for better quality
+        logging: false,
+        backgroundColor: null,
+        // Prevent any scaling or transforms that might cause misalignment
+        windowWidth: (canvasElement as HTMLElement).offsetWidth,
+        windowHeight: (canvasElement as HTMLElement).offsetHeight,
+        // Ensure we capture at the exact position and dimensions
+        x: 0,
+        y: 0,
+        width: (canvasElement as HTMLElement).offsetWidth,
+        height: (canvasElement as HTMLElement).offsetHeight,
+        // Ensure everything is captured properly
+        ignoreElements: (element) => {
+          return element.classList.contains('resize-handle');
+        }
       });
       
-      // Restore selection borders
+      // Restore selection borders and outlines
       selectedElements.forEach((el, i) => {
-        (el as HTMLElement).style.border = originalStyles[i];
+        (el as HTMLElement).style.border = originalStyles[i].border;
+        (el as HTMLElement).style.outline = originalStyles[i].outline;
       });
       
       // Restore resize handles
@@ -259,7 +277,7 @@ const Editor = () => {
         // Clean up
         URL.revokeObjectURL(link.href);
         toast.success("Poster downloaded successfully!");
-      }, 'image/png');
+      }, 'image/png', 1.0); // Higher quality PNG
       
     } catch (error) {
       console.error('Download failed:', error);

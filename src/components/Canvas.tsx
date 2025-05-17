@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { EditorElement, EditorState, ToolType } from '../types';
 import { toast } from 'sonner';
@@ -256,6 +255,7 @@ const Canvas: React.FC<CanvasProps> = ({
   const renderElement = (element: EditorElement) => {
     const isSelected = editorState.selectedElementId === element.id;
     
+    // Create a common base style that will be consistent for both preview and download
     const style: React.CSSProperties = {
       position: 'absolute',
       left: element.x,
@@ -263,7 +263,8 @@ const Canvas: React.FC<CanvasProps> = ({
       width: element.width,
       height: element.height,
       zIndex: element.zIndex,
-      cursor: 'move',
+      cursor: isSelected ? 'move' : 'pointer',
+      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     };
     
     // Add resize handles for selected elements
@@ -319,9 +320,15 @@ const Canvas: React.FC<CanvasProps> = ({
               fontFamily: element.fontFamily,
               backgroundColor: 'transparent',
               border: isSelected ? '1px dashed #9b87f5' : 'none',
+              outline: isSelected ? '1px dashed #9b87f5' : 'none',
+              outlineOffset: '1px',
               whiteSpace: 'nowrap', // Prevent text wrapping
               overflow: 'hidden',
               userSelect: 'none',
+              display: 'flex',
+              alignItems: 'center', // Better vertical alignment
+              justifyContent: 'flex-start', // Align text to the start by default
+              padding: '0 2px', // Add slight padding to prevent text touching the border
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
           >
@@ -416,6 +423,7 @@ const Canvas: React.FC<CanvasProps> = ({
             src={editorState.backgroundImage}
             alt="Background"
             className="absolute inset-0 w-full h-full object-cover"
+            crossOrigin="anonymous" // Add cross-origin attribute for external images
           />
         )}
         
@@ -425,6 +433,7 @@ const Canvas: React.FC<CanvasProps> = ({
           style={{
             backgroundColor: 'black',
             opacity: editorState.overlayOpacity,
+            pointerEvents: 'none', // Allow clicking through the overlay
           }}
         />
         
