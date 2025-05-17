@@ -75,7 +75,7 @@ const Canvas: React.FC<CanvasProps> = ({
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editorState.selectedElementId]);
+  }, [editorState.selectedElementId, onElementRemove, onLayerUpdate]);
   
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (!canvasRef.current) return;
@@ -164,8 +164,8 @@ const Canvas: React.FC<CanvasProps> = ({
     if (!isDragging || !dragStart || !selectedElement || !canvasRef.current) return;
     
     const canvasBounds = canvasRef.current.getBoundingClientRect();
-    const newX = e.clientX - dragStart.x - canvasBounds.left;
-    const newY = e.clientY - dragStart.y - canvasBounds.top;
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
     
     // Update element position
     onElementUpdate({
@@ -182,6 +182,7 @@ const Canvas: React.FC<CanvasProps> = ({
   
   const renderElement = (element: EditorElement) => {
     const style: React.CSSProperties = {
+      position: 'absolute',
       left: element.x,
       top: element.y,
       width: element.width,
@@ -196,12 +197,15 @@ const Canvas: React.FC<CanvasProps> = ({
           <div
             key={element.id}
             className="editor-element editor-text"
+            data-id={element.id}
             style={{
               ...style,
               color: element.color,
               fontSize: `${element.fontSize}px`,
               fontFamily: element.fontFamily,
               backgroundColor: 'transparent',
+              userSelect: 'none',
+              cursor: 'move',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
           >
@@ -213,11 +217,13 @@ const Canvas: React.FC<CanvasProps> = ({
           <div
             key={element.id}
             className="editor-element"
+            data-id={element.id}
             style={{
               ...style,
               border: `2px solid ${element.color}`,
               backgroundColor: element.backgroundColor || 'transparent',
               boxSizing: 'border-box',
+              cursor: 'move',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
           />
@@ -227,12 +233,14 @@ const Canvas: React.FC<CanvasProps> = ({
           <div
             key={element.id}
             className="editor-element"
+            data-id={element.id}
             style={{
               ...style,
               borderRadius: '50%',
               border: `2px solid ${element.color}`,
               backgroundColor: element.backgroundColor || 'transparent',
               boxSizing: 'border-box',
+              cursor: 'move',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
           />
@@ -245,7 +253,7 @@ const Canvas: React.FC<CanvasProps> = ({
   return (
     <div
       ref={canvasRef}
-      className="editor-canvas"
+      className="editor-canvas relative w-full h-full"
       onClick={handleCanvasClick}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

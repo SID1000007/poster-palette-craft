@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditorState, EditorElement, ToolType } from '../types';
@@ -30,8 +31,15 @@ const Editor = () => {
   useEffect(() => {
     const state = location.state as LocationState;
     if (!state || !state.backgroundImage) {
-      toast.error('No background image selected.');
-      navigate('/');
+      // For development, let's use a placeholder if no image is provided
+      const placeholderImage = 'https://images.pexels.com/photos/1323550/pexels-photo-1323550.jpeg';
+      setEditorState({
+        ...editorState,
+        backgroundImage: placeholderImage,
+      });
+      
+      // Still show a toast for better UX
+      toast("Using placeholder image. To start properly, select an image from the home page.");
       return;
     }
 
@@ -54,10 +62,10 @@ const Editor = () => {
 
   // Handle element selection
   const handleElementSelect = (elementId: string | null) => {
-    setEditorState({
-      ...editorState,
+    setEditorState((prevState) => ({
+      ...prevState,
       selectedElementId: elementId,
-    });
+    }));
     
     if (elementId) {
       setActiveTool('select');
@@ -66,88 +74,90 @@ const Editor = () => {
 
   // Handle element update
   const handleElementUpdate = (updatedElement: EditorElement) => {
-    setEditorState({
-      ...editorState,
-      elements: editorState.elements.map((el) => 
+    setEditorState((prevState) => ({
+      ...prevState,
+      elements: prevState.elements.map((el) => 
         el.id === updatedElement.id ? updatedElement : el
       ),
-    });
+    }));
   };
 
   // Handle element addition
   const handleElementAdd = (newElement: EditorElement) => {
-    setEditorState({
-      ...editorState,
-      elements: [...editorState.elements, newElement],
-    });
+    setEditorState((prevState) => ({
+      ...prevState,
+      elements: [...prevState.elements, newElement],
+    }));
   };
 
   // Handle element removal
   const handleElementRemove = (elementId: string) => {
-    setEditorState({
-      ...editorState,
-      elements: editorState.elements.filter((el) => el.id !== elementId),
+    setEditorState((prevState) => ({
+      ...prevState,
+      elements: prevState.elements.filter((el) => el.id !== elementId),
       selectedElementId: null,
-    });
+    }));
   };
 
   // Handle overlay opacity change
   const handleOverlayOpacityChange = (opacity: number) => {
-    setEditorState({
-      ...editorState,
+    setEditorState((prevState) => ({
+      ...prevState,
       overlayOpacity: opacity,
-    });
+    }));
   };
 
   // Handle layer ordering
   const handleLayerUpdate = (elementId: string, direction: 'up' | 'down' | 'top' | 'bottom') => {
-    const elements = [...editorState.elements];
-    const index = elements.findIndex((el) => el.id === elementId);
-    if (index === -1) return;
-    
-    const element = elements[index];
-    
-    if (direction === 'up' && index < elements.length - 1) {
-      // Swap z-index with the element above
-      const nextElement = elements[index + 1];
-      const tempZIndex = element.zIndex;
-      element.zIndex = nextElement.zIndex;
-      nextElement.zIndex = tempZIndex;
-      elements.sort((a, b) => a.zIndex - b.zIndex);
+    setEditorState((prevState) => {
+      const elements = [...prevState.elements];
+      const index = elements.findIndex((el) => el.id === elementId);
+      if (index === -1) return prevState;
       
-      toast("Moved layer up");
-    } else if (direction === 'down' && index > 0) {
-      // Swap z-index with the element below
-      const prevElement = elements[index - 1];
-      const tempZIndex = element.zIndex;
-      element.zIndex = prevElement.zIndex;
-      prevElement.zIndex = tempZIndex;
-      elements.sort((a, b) => a.zIndex - b.zIndex);
+      const element = elements[index];
       
-      toast("Moved layer down");
-    } else if (direction === 'top') {
-      // Move element to top
-      elements.forEach((el, i) => {
-        if (i !== index) el.zIndex = el.zIndex - 1;
-      });
-      element.zIndex = elements.length;
-      elements.sort((a, b) => a.zIndex - b.zIndex);
+      if (direction === 'up' && index < elements.length - 1) {
+        // Swap z-index with the element above
+        const nextElement = elements[index + 1];
+        const tempZIndex = element.zIndex;
+        element.zIndex = nextElement.zIndex;
+        nextElement.zIndex = tempZIndex;
+        elements.sort((a, b) => a.zIndex - b.zIndex);
+        
+        toast("Moved layer up");
+      } else if (direction === 'down' && index > 0) {
+        // Swap z-index with the element below
+        const prevElement = elements[index - 1];
+        const tempZIndex = element.zIndex;
+        element.zIndex = prevElement.zIndex;
+        prevElement.zIndex = tempZIndex;
+        elements.sort((a, b) => a.zIndex - b.zIndex);
+        
+        toast("Moved layer down");
+      } else if (direction === 'top') {
+        // Move element to top
+        elements.forEach((el, i) => {
+          if (i !== index) el.zIndex = el.zIndex - 1;
+        });
+        element.zIndex = elements.length;
+        elements.sort((a, b) => a.zIndex - b.zIndex);
+        
+        toast("Moved layer to front");
+      } else if (direction === 'bottom') {
+        // Move element to bottom
+        elements.forEach((el, i) => {
+          if (i !== index) el.zIndex = el.zIndex + 1;
+        });
+        element.zIndex = 1;
+        elements.sort((a, b) => a.zIndex - b.zIndex);
+        
+        toast("Moved layer to back");
+      }
       
-      toast("Moved layer to front");
-    } else if (direction === 'bottom') {
-      // Move element to bottom
-      elements.forEach((el, i) => {
-        if (i !== index) el.zIndex = el.zIndex + 1;
-      });
-      element.zIndex = 1;
-      elements.sort((a, b) => a.zIndex - b.zIndex);
-      
-      toast("Moved layer to back");
-    }
-    
-    setEditorState({
-      ...editorState,
-      elements,
+      return {
+        ...prevState,
+        elements,
+      };
     });
   };
 
@@ -229,7 +239,7 @@ const Editor = () => {
           
           <div 
             ref={canvasRef} 
-            className="flex-1 overflow-hidden"
+            className="flex-1 overflow-hidden relative"
             style={{ minHeight: '60vh' }}
           >
             <Canvas
