@@ -1,9 +1,14 @@
+
 import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
 
-const TooltipProvider = TooltipPrimitive.Provider
+// Create a provider component that wraps the entire application
+const TooltipProvider = ({ children, ...props }) => (
+  <TooltipPrimitive.Provider {...props}>{children}</TooltipPrimitive.Provider>
+)
+TooltipProvider.displayName = "TooltipProvider"
 
 const Tooltip = TooltipPrimitive.Root
 
