@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EditorElement } from '../types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ const TextEditor: React.FC<TextEditorProps> = ({ element, onUpdate }) => {
   const [fontSize, setFontSize] = useState(element.fontSize || 24);
   const [color, setColor] = useState(element.color || '#FFFFFF');
   const [fontFamily, setFontFamily] = useState(element.fontFamily || 'Roboto');
+  const [width, setWidth] = useState(element.width || 200);
+  const [height, setHeight] = useState(element.height || 50);
   
   const fontOptions = [
     { value: 'Roboto', label: 'Roboto' },
@@ -26,14 +28,22 @@ const TextEditor: React.FC<TextEditorProps> = ({ element, onUpdate }) => {
   ];
 
   useEffect(() => {
+    // Update element from props (for external changes like resize handles)
+    setWidth(element.width);
+    setHeight(element.height);
+  }, [element.width, element.height]);
+
+  useEffect(() => {
     onUpdate({
       ...element,
       content: text,
       fontSize,
       color,
       fontFamily,
+      width,
+      height,
     });
-  }, [text, fontSize, color, fontFamily]);
+  }, [text, fontSize, color, fontFamily, width, height]);
 
   return (
     <div className="space-y-4 p-4 bg-editor-dark rounded-lg">
@@ -83,6 +93,32 @@ const TextEditor: React.FC<TextEditorProps> = ({ element, onUpdate }) => {
               className="flex-1"
             />
           </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="text-width" className="text-white">Width</Label>
+          <Input
+            id="text-width"
+            type="number"
+            min={20}
+            max={1000}
+            value={width}
+            onChange={(e) => setWidth(Number(e.target.value))}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="text-height" className="text-white">Height</Label>
+          <Input
+            id="text-height"
+            type="number"
+            min={20}
+            max={1000}
+            value={height}
+            onChange={(e) => setHeight(Number(e.target.value))}
+          />
         </div>
       </div>
       

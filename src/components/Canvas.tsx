@@ -19,6 +19,8 @@ interface Position {
   y: number;
 }
 
+type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null;
+
 const Canvas: React.FC<CanvasProps> = ({
   editorState,
   activeTool,
@@ -30,6 +32,8 @@ const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
   const [dragStart, setDragStart] = useState<Position | null>(null);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
   
@@ -81,7 +85,8 @@ const Canvas: React.FC<CanvasProps> = ({
     if (!canvasRef.current) return;
     
     // Ignore clicks on elements (they will be handled by element click)
-    if ((e.target as HTMLElement).classList.contains('editor-element')) {
+    if ((e.target as HTMLElement).classList.contains('editor-element') || 
+        (e.target as HTMLElement).classList.contains('resize-handle')) {
       return;
     }
     
@@ -159,28 +164,98 @@ const Canvas: React.FC<CanvasProps> = ({
       y: e.clientY - element.y,
     });
   };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, handle: ResizeHandle, element: EditorElement) => {
+    e.stopPropagation();
+    
+    onElementSelect(element.id);
+    setIsResizing(true);
+    setResizeHandle(handle);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
   
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !dragStart || !selectedElement || !canvasRef.current) return;
-    
+    if (!canvasRef.current) return;
     const canvasBounds = canvasRef.current.getBoundingClientRect();
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
+
+    // Handle dragging
+    if (isDragging && !isResizing && dragStart && selectedElement) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      
+      // Update element position
+      onElementUpdate({
+        ...selectedElement,
+        x: Math.max(0, Math.min(canvasBounds.width - selectedElement.width, newX)),
+        y: Math.max(0, Math.min(canvasBounds.height - selectedElement.height, newY)),
+      });
+      return;
+    }
     
-    // Update element position
-    onElementUpdate({
-      ...selectedElement,
-      x: Math.max(0, Math.min(canvasBounds.width - selectedElement.width, newX)),
-      y: Math.max(0, Math.min(canvasBounds.height - selectedElement.height, newY)),
-    });
+    // Handle resizing
+    if (isResizing && dragStart && selectedElement && resizeHandle) {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+      
+      let newWidth = selectedElement.width;
+      let newHeight = selectedElement.height;
+      let newX = selectedElement.x;
+      let newY = selectedElement.y;
+      
+      // Adjust dimensions and position based on which handle is being dragged
+      switch(resizeHandle) {
+        case 'top-left':
+          newWidth = Math.max(20, selectedElement.width - deltaX);
+          newHeight = Math.max(20, selectedElement.height - deltaY);
+          newX = selectedElement.x + (selectedElement.width - newWidth);
+          newY = selectedElement.y + (selectedElement.height - newHeight);
+          break;
+        case 'top-right':
+          newWidth = Math.max(20, selectedElement.width + deltaX);
+          newHeight = Math.max(20, selectedElement.height - deltaY);
+          newY = selectedElement.y + (selectedElement.height - newHeight);
+          break;
+        case 'bottom-left':
+          newWidth = Math.max(20, selectedElement.width - deltaX);
+          newHeight = Math.max(20, selectedElement.height + deltaY);
+          newX = selectedElement.x + (selectedElement.width - newWidth);
+          break;
+        case 'bottom-right':
+          newWidth = Math.max(20, selectedElement.width + deltaX);
+          newHeight = Math.max(20, selectedElement.height + deltaY);
+          break;
+      }
+      
+      // Update element with new dimensions and position
+      onElementUpdate({
+        ...selectedElement,
+        x: newX,
+        y: newY,
+        width: newWidth,
+        height: newHeight,
+      });
+      
+      // Update drag start for continuous resizing
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+      });
+    }
   };
   
   const handleMouseUp = () => {
     setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
     setDragStart(null);
   };
   
   const renderElement = (element: EditorElement) => {
+    const isSelected = editorState.selectedElementId === element.id;
+    
     const style: React.CSSProperties = {
       position: 'absolute',
       left: element.x,
@@ -188,7 +263,46 @@ const Canvas: React.FC<CanvasProps> = ({
       width: element.width,
       height: element.height,
       zIndex: element.zIndex,
-      border: editorState.selectedElementId === element.id ? '2px dashed #9b87f5' : 'none',
+      cursor: 'move',
+    };
+    
+    // Add resize handles for selected elements
+    const renderResizeHandles = () => {
+      if (!isSelected) return null;
+      
+      const handleStyle: React.CSSProperties = {
+        position: 'absolute',
+        width: '10px',
+        height: '10px',
+        backgroundColor: '#9b87f5',
+        border: '1px solid white',
+        zIndex: element.zIndex + 1,
+      };
+      
+      return (
+        <>
+          <div
+            className="resize-handle top-left"
+            style={{ ...handleStyle, top: '-5px', left: '-5px', cursor: 'nwse-resize' }}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'top-left', element)}
+          />
+          <div
+            className="resize-handle top-right"
+            style={{ ...handleStyle, top: '-5px', right: '-5px', cursor: 'nesw-resize' }}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'top-right', element)}
+          />
+          <div
+            className="resize-handle bottom-left"
+            style={{ ...handleStyle, bottom: '-5px', left: '-5px', cursor: 'nesw-resize' }}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'bottom-left', element)}
+          />
+          <div
+            className="resize-handle bottom-right"
+            style={{ ...handleStyle, bottom: '-5px', right: '-5px', cursor: 'nwse-resize' }}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'bottom-right', element)}
+          />
+        </>
+      );
     };
     
     switch (element.type) {
@@ -204,12 +318,15 @@ const Canvas: React.FC<CanvasProps> = ({
               fontSize: `${element.fontSize}px`,
               fontFamily: element.fontFamily,
               backgroundColor: 'transparent',
+              border: isSelected ? '1px dashed #9b87f5' : 'none',
+              whiteSpace: 'nowrap', // Prevent text wrapping
+              overflow: 'hidden',
               userSelect: 'none',
-              cursor: 'move',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
           >
             {element.content}
+            {renderResizeHandles()}
           </div>
         );
       case 'rectangle':
@@ -223,10 +340,13 @@ const Canvas: React.FC<CanvasProps> = ({
               border: `2px solid ${element.color}`,
               backgroundColor: element.backgroundColor || 'transparent',
               boxSizing: 'border-box',
-              cursor: 'move',
+              outline: isSelected ? '1px dashed #9b87f5' : 'none',
+              outlineOffset: '1px',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
-          />
+          >
+            {renderResizeHandles()}
+          </div>
         );
       case 'circle':
         return (
@@ -240,10 +360,13 @@ const Canvas: React.FC<CanvasProps> = ({
               border: `2px solid ${element.color}`,
               backgroundColor: element.backgroundColor || 'transparent',
               boxSizing: 'border-box',
-              cursor: 'move',
+              outline: isSelected ? '1px dashed #9b87f5' : 'none',
+              outlineOffset: '1px',
             }}
             onMouseDown={(e) => handleElementMouseDown(e, element)}
-          />
+          >
+            {renderResizeHandles()}
+          </div>
         );
       default:
         return null;

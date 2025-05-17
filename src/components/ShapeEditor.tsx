@@ -16,6 +16,12 @@ const ShapeEditor: React.FC<ShapeEditorProps> = ({ element, onUpdate }) => {
   const [height, setHeight] = useState(element.height);
   
   useEffect(() => {
+    // Update dimensions from props (for external changes via resize handles)
+    setWidth(element.width);
+    setHeight(element.height);
+  }, [element.width, element.height]);
+
+  useEffect(() => {
     onUpdate({
       ...element,
       color,
@@ -102,6 +108,10 @@ const ShapeEditor: React.FC<ShapeEditorProps> = ({ element, onUpdate }) => {
             placeholder="transparent"
           />
         </div>
+      </div>
+      
+      <div className="mt-4 text-xs text-gray-400">
+        <p>Tip: You can also resize by dragging the handles when selected.</p>
       </div>
     </div>
   );
