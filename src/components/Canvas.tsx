@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { EditorElement, EditorState, ToolType } from '../types';
+import { EditorElement, EditorState, ToolType, CropSettings } from '../types';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import ImageCropper from './ImageCropper';
@@ -14,7 +14,7 @@ interface CanvasProps {
   onElementRemove: (elementId: string) => void;
   onLayerUpdate: (elementId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
   onCropStart: () => void;
-  onCropApply: (cropSettings: { x: number, y: number, width: number, height: number }) => void;
+  onCropApply: (cropSettings: CropSettings) => void;
   onCropCancel: () => void;
 }
 
@@ -431,7 +431,7 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   // If we have crop settings, apply them to the background image
-  if (editorState.cropSettings) {
+  if (editorState.cropSettings && editorState.backgroundImage) {
     const { x, y, width, height } = editorState.cropSettings;
     backgroundStyle.objectFit = 'none';
     backgroundStyle.objectPosition = `${-x}px ${-y}px`;
@@ -451,7 +451,7 @@ const Canvas: React.FC<CanvasProps> = ({
         canvasHeight={editorState.canvasDimensions?.height || 1080}
         initialCrop={editorState.cropSettings}
         onApplyCrop={onCropApply}
-        onCancelCrop={onCropCancel}
+        onCancelCrop={onCancelCrop}
       />
     );
   }

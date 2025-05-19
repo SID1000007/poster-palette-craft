@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat, CropSettings, PosterDimension } from '../types';
@@ -67,6 +68,14 @@ const Editor = () => {
       setEditorState(prevState => ({
         ...prevState,
         selectedElementId: null,
+      }));
+    }
+    
+    // Auto-start cropping when crop tool is selected
+    if (tool === 'crop') {
+      setEditorState(prevState => ({
+        ...prevState,
+        isCropping: true,
       }));
     }
   };
@@ -214,6 +223,7 @@ const Editor = () => {
   };
 
   const handleCropApply = (cropSettings: CropSettings) => {
+    console.log("Applying crop settings:", cropSettings);
     setEditorState(prevState => ({
       ...prevState,
       cropSettings,

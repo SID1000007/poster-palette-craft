@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { CropSettings } from '../types';
@@ -31,15 +32,21 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
     width: initialCrop?.width || canvasWidth,
     height: initialCrop?.height || canvasHeight
   });
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0, naturalWidth: 0, naturalHeight: 0 });
   const [isResizing, setIsResizing] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<string | null>(null);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // Calculate aspect ratio
+  const aspectRatio = canvasWidth / canvasHeight;
 
   // When the image loads, initialize the crop box to match the canvas dimensions
   useEffect(() => {
-    if (imageRef.current && imageRef.current.complete) {
-      handleImageLoad();
+    if (imageRef.current) {
+      if (imageRef.current.complete) {
+        handleImageLoad();
+      }
     }
   }, [imageSrc]);
 
@@ -51,7 +58,14 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
     
     // Get the actual rendered image size (after any CSS scaling)
     const imgRect = img.getBoundingClientRect();
-    setImageSize({ width: imgRect.width, height: imgRect.height });
+    setImageSize({ 
+      width: imgRect.width, 
+      height: imgRect.height,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight
+    });
+    
+    setImageLoaded(true);
 
     // Set initial crop box to match canvas dimensions and aspect ratio
     if (!initialCrop) {
@@ -98,10 +112,9 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !imageLoaded) return;
     
-    const container = containerRef.current;
-    const containerRect = container.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
     if (isDragging) {
       e.preventDefault();
@@ -132,8 +145,6 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       const deltaY = e.clientY - resizeStart.y;
       
       // Maintain aspect ratio
-      const aspectRatio = canvasWidth / canvasHeight;
-      
       setCropBox(prev => {
         let newWidth = prev.width;
         let newHeight = prev.height;
@@ -229,7 +240,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   
   // Convert crop box to actual image crop settings
   const handleApply = () => {
-    if (!imageRef.current || !containerRef.current || !cropBoxRef.current) return;
+    if (!imageRef.current || !containerRef.current || !cropBoxRef.current || !imageLoaded) return;
     
     // Map the crop box coordinates to the actual image size
     const img = imageRef.current;
@@ -284,72 +295,74 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
           onLoad={handleImageLoad}
         />
         
-        <div
-          ref={cropBoxRef}
-          className="absolute border-2 border-white cursor-move"
-          style={{
-            left: `${cropBox.x}px`,
-            top: `${cropBox.y}px`,
-            width: `${cropBox.width}px`,
-            height: `${cropBox.height}px`,
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
-          }}
-          onMouseDown={handleMouseDown}
-        >
-          {/* Resize handles */}
-          <div 
-            className="resize-handle top-left" 
-            style={{ 
-              position: 'absolute', 
-              top: '-5px', 
-              left: '-5px', 
-              width: '10px', 
-              height: '10px', 
-              background: 'white', 
-              cursor: 'nwse-resize'
+        {imageLoaded && (
+          <div
+            ref={cropBoxRef}
+            className="absolute border-2 border-white cursor-move"
+            style={{
+              left: `${cropBox.x}px`,
+              top: `${cropBox.y}px`,
+              width: `${cropBox.width}px`,
+              height: `${cropBox.height}px`,
+              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)'
             }}
-            onMouseDown={(e) => handleResizeStart(e, 'top-left')}
-          />
-          <div 
-            className="resize-handle top-right" 
-            style={{ 
-              position: 'absolute', 
-              top: '-5px', 
-              right: '-5px', 
-              width: '10px', 
-              height: '10px', 
-              background: 'white', 
-              cursor: 'nesw-resize'
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'top-right')}
-          />
-          <div 
-            className="resize-handle bottom-left" 
-            style={{ 
-              position: 'absolute', 
-              bottom: '-5px', 
-              left: '-5px', 
-              width: '10px', 
-              height: '10px', 
-              background: 'white', 
-              cursor: 'nesw-resize'
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'bottom-left')}
-          />
-          <div 
-            className="resize-handle bottom-right" 
-            style={{ 
-              position: 'absolute', 
-              bottom: '-5px', 
-              right: '-5px', 
-              width: '10px', 
-              height: '10px', 
-              background: 'white', 
-              cursor: 'nwse-resize'
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'bottom-right')}
-          />
-        </div>
+            onMouseDown={handleMouseDown}
+          >
+            {/* Resize handles */}
+            <div 
+              className="resize-handle top-left" 
+              style={{ 
+                position: 'absolute', 
+                top: '-5px', 
+                left: '-5px', 
+                width: '10px', 
+                height: '10px', 
+                background: 'white', 
+                cursor: 'nwse-resize'
+              }}
+              onMouseDown={(e) => handleResizeStart(e, 'top-left')}
+            />
+            <div 
+              className="resize-handle top-right" 
+              style={{ 
+                position: 'absolute', 
+                top: '-5px', 
+                right: '-5px', 
+                width: '10px', 
+                height: '10px', 
+                background: 'white', 
+                cursor: 'nesw-resize'
+              }}
+              onMouseDown={(e) => handleResizeStart(e, 'top-right')}
+            />
+            <div 
+              className="resize-handle bottom-left" 
+              style={{ 
+                position: 'absolute', 
+                bottom: '-5px', 
+                left: '-5px', 
+                width: '10px', 
+                height: '10px', 
+                background: 'white', 
+                cursor: 'nesw-resize'
+              }}
+              onMouseDown={(e) => handleResizeStart(e, 'bottom-left')}
+            />
+            <div 
+              className="resize-handle bottom-right" 
+              style={{ 
+                position: 'absolute', 
+                bottom: '-5px', 
+                right: '-5px', 
+                width: '10px', 
+                height: '10px', 
+                background: 'white', 
+                cursor: 'nwse-resize'
+              }}
+              onMouseDown={(e) => handleResizeStart(e, 'bottom-right')}
+            />
+          </div>
+        )}
       </div>
       
       <div className="flex justify-center gap-3 mt-4">
