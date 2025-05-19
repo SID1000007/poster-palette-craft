@@ -81,6 +81,7 @@ export interface EditorState {
     platform: SocialPlatform;
     format: PostFormat;
     name: string;
+    aspectRatio?: string;
   };
   cropSettings?: CropSettings;
   isCropping: boolean;

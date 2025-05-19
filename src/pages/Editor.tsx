@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat, CropSettings } from '../types';
+import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat, CropSettings, PosterDimension } from '../types';
 import Canvas from '../components/Canvas';
 import Toolbar from '../components/Toolbar';
 import OverlayControls from '../components/OverlayControls';
@@ -134,7 +133,8 @@ const Editor = () => {
         height,
         platform,
         format,
-        name
+        name,
+        aspectRatio: `${width}:${height}`
       }
     }));
     
@@ -378,8 +378,8 @@ const Editor = () => {
               width: editorState.canvasDimensions.width,
               height: editorState.canvasDimensions.height,
               name: editorState.canvasDimensions.name,
-              aspectRatio: `${editorState.canvasDimensions.width}:${editorState.canvasDimensions.height}`
-            } : undefined}
+              aspectRatio: editorState.canvasDimensions.aspectRatio || `${editorState.canvasDimensions.width}:${editorState.canvasDimensions.height}`
+            } as PosterDimension : undefined}
           />
           
           {selectedElement ? (
