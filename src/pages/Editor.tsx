@@ -126,6 +126,7 @@ const Editor = () => {
     height: number,
     name: string
   ) => {
+    // Update canvas dimensions
     setEditorState(prevState => ({
       ...prevState,
       canvasDimensions: {
@@ -135,10 +136,18 @@ const Editor = () => {
         format,
         name,
         aspectRatio: `${width}:${height}`
-      }
+      },
+      // Reset crop settings when dimensions change
+      cropSettings: undefined, 
+      // Automatically enter cropping mode when dimensions change
+      isCropping: true
     }));
     
     toast(`Canvas dimensions set to ${width}×${height}px for ${platform} ${format}`);
+    toast.info("Please crop your image to fit the new dimensions");
+    
+    // Set active tool to crop
+    setActiveTool('crop');
   };
 
   // Handle layer ordering

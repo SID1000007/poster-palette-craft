@@ -6,14 +6,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   SocialPlatform, 
   PostFormat, 
-  PlatformDimensions 
+  PlatformDimensions,
+  PosterDimension 
 } from '../types';
 
 interface DimensionSelectorProps {
   onDimensionChange: (platform: SocialPlatform, format: PostFormat, width: number, height: number, name: string) => void;
   selectedPlatform?: SocialPlatform;
   selectedFormat?: PostFormat;
-  selectedDimension?: {width: number, height: number, name: string};
+  selectedDimension?: PosterDimension;
 }
 
 // Define all platform dimensions from the screenshot
