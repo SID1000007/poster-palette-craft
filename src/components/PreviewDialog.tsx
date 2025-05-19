@@ -18,8 +18,8 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ isOpen, onClose, editorSt
 
   if (!editorState.backgroundImage) return null;
 
-  // Calculate background image style with crop
-  const backgroundStyle: React.CSSProperties = {
+  // Create a modified background style that properly applies the crop
+  let backgroundStyle: React.CSSProperties = {
     position: 'absolute',
     inset: 0,
     width: '100%',
@@ -27,16 +27,30 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ isOpen, onClose, editorSt
     objectFit: 'cover',
   };
 
-  // If we have crop settings, apply them to the background image
+  // If we have crop settings, apply them correctly
   if (editorState.cropSettings) {
     const { x, y, width, height } = editorState.cropSettings;
-    backgroundStyle.objectFit = 'none';
-    backgroundStyle.objectPosition = `${-x}px ${-y}px`;
-    backgroundStyle.width = `${width}px`;
-    backgroundStyle.height = `${height}px`;
-    backgroundStyle.transform = 'scale(1)';
-    backgroundStyle.maxWidth = 'none';
-    backgroundStyle.maxHeight = 'none';
+    
+    // If we have canvas dimensions, calculate correct scaling
+    if (editorState.canvasDimensions) {
+      const canvasWidth = editorState.canvasDimensions.width;
+      const canvasHeight = editorState.canvasDimensions.height;
+      
+      // Calculate the scale factor to fit the cropped region into the canvas
+      const scaleX = canvasWidth / width;
+      const scaleY = canvasHeight / height;
+      
+      backgroundStyle = {
+        position: 'absolute',
+        inset: 0,
+        width: `${canvasWidth}px`,
+        height: `${canvasHeight}px`,
+        objectFit: 'none',
+        objectPosition: `${-x * scaleX}px ${-y * scaleY}px`,
+        transform: `scale(${1 / scaleX}, ${1 / scaleY})`,
+        transformOrigin: '0 0',
+      };
+    }
   }
 
   return (

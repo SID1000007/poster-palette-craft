@@ -420,8 +420,8 @@ const Canvas: React.FC<CanvasProps> = ({
     canvasStyle.margin = 'auto';
   }
   
-  // Calculate background image style with crop
-  const backgroundStyle: React.CSSProperties = {
+  // Prepare the background image style
+  let backgroundImgStyle: React.CSSProperties = {
     position: 'absolute',
     inset: 0,
     width: '100%',
@@ -429,16 +429,31 @@ const Canvas: React.FC<CanvasProps> = ({
     objectFit: 'cover',
   };
 
-  // If we have crop settings, apply them to the background image
+  // If we have crop settings, apply them correctly
   if (editorState.cropSettings && editorState.backgroundImage) {
     const { x, y, width, height } = editorState.cropSettings;
-    backgroundStyle.objectFit = 'none';
-    backgroundStyle.objectPosition = `${-x}px ${-y}px`;
-    backgroundStyle.width = `${width}px`;
-    backgroundStyle.height = `${height}px`;
-    backgroundStyle.transform = 'scale(1)';
-    backgroundStyle.maxWidth = 'none';
-    backgroundStyle.maxHeight = 'none';
+    
+    // If we have crop settings and canvas dimensions, we need to get the proper scaling
+    if (editorState.canvasDimensions) {
+      const canvasWidth = editorState.canvasDimensions.width;
+      const canvasHeight = editorState.canvasDimensions.height;
+      
+      // Calculate the scale factor to fit the cropped region into the canvas
+      const scaleX = canvasWidth / width;
+      const scaleY = canvasHeight / height;
+      
+      // Apply the crop settings
+      backgroundImgStyle = {
+        position: 'absolute',
+        inset: 0,
+        width: `${canvasWidth}px`,
+        height: `${canvasHeight}px`,
+        objectFit: 'none',
+        objectPosition: `${-x * scaleX}px ${-y * scaleY}px`,
+        transform: `scale(${1 / scaleX}, ${1 / scaleY})`,
+        transformOrigin: '0 0',
+      };
+    }
   }
   
   // Show the crop interface if in cropping mode
@@ -473,7 +488,7 @@ const Canvas: React.FC<CanvasProps> = ({
             alt="Background"
             className="absolute inset-0"
             crossOrigin="anonymous"
-            style={backgroundStyle}
+            style={backgroundImgStyle}
           />
         )}
         

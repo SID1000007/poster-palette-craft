@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat, CropSettings, PosterDimension } from '../types';
@@ -135,24 +134,28 @@ const Editor = () => {
     height: number,
     name: string
   ) => {
-    // Update canvas dimensions
-    setEditorState(prevState => ({
-      ...prevState,
-      canvasDimensions: {
-        width,
-        height,
-        platform,
-        format,
-        name,
-        aspectRatio: `${width}:${height}`
-      },
-      // Reset crop settings when dimensions change
-      cropSettings: undefined, 
-      // Automatically enter cropping mode when dimensions change
-      isCropping: true
-    }));
+    // Update canvas dimensions and reset crop settings
+    setEditorState(prevState => {
+      console.log(`Changing dimensions to ${width}x${height} for ${platform} ${format}`);
+      
+      return {
+        ...prevState,
+        canvasDimensions: {
+          width,
+          height,
+          platform,
+          format,
+          name,
+          aspectRatio: `${width}:${height}`
+        },
+        // Reset crop settings when dimensions change to force recropping
+        cropSettings: undefined, 
+        // Automatically enter cropping mode when dimensions change
+        isCropping: true
+      };
+    });
     
-    toast(`Canvas dimensions set to ${width}×${height}px for ${platform} ${format}`);
+    toast.info(`Canvas dimensions set to ${width}×${height}px for ${platform} ${format}`);
     toast.info("Please crop your image to fit the new dimensions");
     
     // Set active tool to crop
@@ -223,12 +226,19 @@ const Editor = () => {
   };
 
   const handleCropApply = (cropSettings: CropSettings) => {
-    console.log("Applying crop settings:", cropSettings);
-    setEditorState(prevState => ({
-      ...prevState,
-      cropSettings,
-      isCropping: false,
-    }));
+    console.log("Applying crop settings in Editor:", cropSettings);
+    
+    setEditorState(prevState => {
+      // Deep copy the crop settings to prevent reference issues
+      const newCropSettings = { ...cropSettings };
+      
+      return {
+        ...prevState,
+        cropSettings: newCropSettings,
+        isCropping: false,
+      };
+    });
+    
     setActiveTool('select');
     toast.success("Image cropped successfully");
   };
@@ -239,6 +249,7 @@ const Editor = () => {
       isCropping: false,
     }));
     setActiveTool('select');
+    toast.info("Crop canceled");
   };
 
   // Handle preview modal
