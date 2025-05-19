@@ -1,4 +1,3 @@
-
 export interface PexelsPhoto {
   id: number;
   width: number;
@@ -77,4 +76,5 @@ export interface EditorState {
   };
 }
 
+// Define the types of tools available in the editor
 export type ToolType = 'select' | 'text' | 'rectangle' | 'circle';

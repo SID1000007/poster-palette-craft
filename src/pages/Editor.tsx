@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat } from '../types';
@@ -8,6 +7,7 @@ import OverlayControls from '../components/OverlayControls';
 import TextEditor from '../components/TextEditor';
 import ShapeEditor from '../components/ShapeEditor';
 import DimensionSelector from '../components/DimensionSelector';
+import PreviewDialog from '../components/PreviewDialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import html2canvas from 'html2canvas';
@@ -22,6 +22,7 @@ const Editor = () => {
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTool, setActiveTool] = useState<ToolType>('select');
+  const [showPreview, setShowPreview] = useState(false);
   const [editorState, setEditorState] = useState<EditorState>({
     backgroundImage: null,
     overlayOpacity: 0.3,
@@ -192,6 +193,11 @@ const Editor = () => {
     });
   };
 
+  // Handle preview modal
+  const handleShowPreview = () => {
+    setShowPreview(true);
+  };
+
   // Handle poster download
   const handleDownload = async () => {
     if (!canvasRef.current) return;
@@ -200,20 +206,31 @@ const Editor = () => {
       toast("Preparing your poster for download...");
       
       // Find the actual canvas element inside our container
-      const canvasElement = canvasRef.current.querySelector('.editor-canvas');
-      if (!canvasElement) {
+      let targetElement: HTMLElement | null;
+      
+      // If we're in preview mode, use the preview element
+      if (showPreview) {
+        targetElement = document.querySelector('.preview-canvas');
+      } else {
+        targetElement = canvasRef.current.querySelector('.editor-canvas');
+      }
+      
+      if (!targetElement) {
         toast.error("Could not find canvas element");
         return;
       }
       
       // Temporarily hide selection borders and resize handles for screenshot
-      const selectedElements = document.querySelectorAll('.editor-element');
+      const selectedElements = document.querySelectorAll('.editor-element, .preview-element');
       const originalStyles = Array.from(selectedElements).map(el => {
-        const style = (el as HTMLElement).style.border;
-        const outline = (el as HTMLElement).style.outline;
-        (el as HTMLElement).style.border = 'none';
-        (el as HTMLElement).style.outline = 'none';
-        return { border: style, outline: outline };
+        const element = el as HTMLElement;
+        const style = {
+          border: element.style.border,
+          outline: element.style.outline
+        };
+        element.style.border = 'none';
+        element.style.outline = 'none';
+        return style;
       });
       
       // Also hide resize handles
@@ -223,20 +240,20 @@ const Editor = () => {
       });
       
       // Use html2canvas with improved settings for more accurate rendering
-      const canvas = await html2canvas(canvasElement as HTMLElement, {
+      const canvas = await html2canvas(targetElement as HTMLElement, {
         allowTaint: true,
         useCORS: true,
         scale: 2, // Higher scale for better quality
         logging: false,
         backgroundColor: null,
         // Prevent any scaling or transforms that might cause misalignment
-        windowWidth: (canvasElement as HTMLElement).offsetWidth,
-        windowHeight: (canvasElement as HTMLElement).offsetHeight,
+        windowWidth: targetElement.offsetWidth,
+        windowHeight: targetElement.offsetHeight,
         // Ensure we capture at the exact position and dimensions
         x: 0,
         y: 0,
-        width: (canvasElement as HTMLElement).offsetWidth,
-        height: (canvasElement as HTMLElement).offsetHeight,
+        width: targetElement.offsetWidth,
+        height: targetElement.offsetHeight,
         // Ensure everything is captured properly
         ignoreElements: (element) => {
           return element.classList.contains('resize-handle');
@@ -245,8 +262,9 @@ const Editor = () => {
       
       // Restore selection borders and outlines
       selectedElements.forEach((el, i) => {
-        (el as HTMLElement).style.border = originalStyles[i].border;
-        (el as HTMLElement).style.outline = originalStyles[i].outline;
+        const element = el as HTMLElement;
+        element.style.border = originalStyles[i].border;
+        element.style.outline = originalStyles[i].outline;
       });
       
       // Restore resize handles
@@ -277,6 +295,11 @@ const Editor = () => {
         // Clean up
         URL.revokeObjectURL(link.href);
         toast.success("Poster downloaded successfully!");
+        
+        // Close preview if open
+        if (showPreview) {
+          setShowPreview(false);
+        }
       }, 'image/png', 1.0); // Higher quality PNG
       
     } catch (error) {
@@ -297,6 +320,7 @@ const Editor = () => {
           activeTool={activeTool} 
           onToolChange={handleToolChange}
           onDownload={handleDownload}
+          onPreview={handleShowPreview}
         />
       </header>
       
@@ -410,6 +434,14 @@ const Editor = () => {
           )}
         </div>
       </main>
+      
+      {/* Preview Dialog */}
+      <PreviewDialog 
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        editorState={editorState}
+        onDownload={handleDownload}
+      />
     </div>
   );
 };

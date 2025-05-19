@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Text, Square, Circle, Download } from 'lucide-react';
+import { ArrowLeft, Text, Square, Circle, Download, Eye } from 'lucide-react';
 import { ToolType } from '../types';
 import { Link } from 'react-router-dom';
 
@@ -10,9 +10,10 @@ interface ToolbarProps {
   activeTool: ToolType;
   onToolChange: (tool: ToolType) => void;
   onDownload: () => void;
+  onPreview: () => void;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ activeTool, onToolChange, onDownload }) => {
+const Toolbar: React.FC<ToolbarProps> = ({ activeTool, onToolChange, onDownload, onPreview }) => {
   return (
     <div className="flex items-center gap-2 p-2 bg-editor-dark rounded-lg">
       <Link to="/">
@@ -63,6 +64,16 @@ const Toolbar: React.FC<ToolbarProps> = ({ activeTool, onToolChange, onDownload 
       </Button>
       
       <div className="flex-grow"></div>
+      
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={onPreview}
+        className="mr-2"
+      >
+        <Eye size={16} className="mr-1" />
+        Preview
+      </Button>
       
       <Button 
         variant="default" 
