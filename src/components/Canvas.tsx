@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { EditorElement, EditorState, ToolType, CropSettings } from '../types';
 import { toast } from 'sonner';
@@ -451,7 +450,7 @@ const Canvas: React.FC<CanvasProps> = ({
         canvasHeight={editorState.canvasDimensions?.height || 1080}
         initialCrop={editorState.cropSettings}
         onApplyCrop={onCropApply}
-        onCancelCrop={onCancelCrop}
+        onCancelCrop={onCropCancel}
       />
     );
   }
