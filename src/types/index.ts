@@ -1,3 +1,4 @@
+
 export interface PexelsPhoto {
   id: number;
   width: number;
@@ -62,6 +63,13 @@ export interface PlatformDimensions {
   storyDimensions: PosterDimension[];
 }
 
+export interface CropSettings {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface EditorState {
   backgroundImage: string | null;
   overlayOpacity: number;
@@ -74,7 +82,9 @@ export interface EditorState {
     format: PostFormat;
     name: string;
   };
+  cropSettings?: CropSettings;
+  isCropping: boolean;
 }
 
 // Define the types of tools available in the editor
-export type ToolType = 'select' | 'text' | 'rectangle' | 'circle';
+export type ToolType = 'select' | 'text' | 'rectangle' | 'circle' | 'crop';

@@ -1,7 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { EditorElement, EditorState, ToolType } from '../types';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import ImageCropper from './ImageCropper';
 
 interface CanvasProps {
   editorState: EditorState;
@@ -11,6 +13,9 @@ interface CanvasProps {
   onElementAdd: (element: EditorElement) => void;
   onElementRemove: (elementId: string) => void;
   onLayerUpdate: (elementId: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
+  onCropStart: () => void;
+  onCropApply: (cropSettings: { x: number, y: number, width: number, height: number }) => void;
+  onCropCancel: () => void;
 }
 
 interface Position {
@@ -27,7 +32,10 @@ const Canvas: React.FC<CanvasProps> = ({
   onElementUpdate,
   onElementAdd,
   onElementRemove,
-  onLayerUpdate
+  onLayerUpdate,
+  onCropStart,
+  onCropApply,
+  onCropCancel
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -35,6 +43,13 @@ const Canvas: React.FC<CanvasProps> = ({
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
   const [dragStart, setDragStart] = useState<Position | null>(null);
   const [selectedElement, setSelectedElement] = useState<EditorElement | null>(null);
+  
+  // Show crop interface if crop tool is active
+  useEffect(() => {
+    if (activeTool === 'crop' && !editorState.isCropping) {
+      onCropStart();
+    }
+  }, [activeTool, editorState.isCropping, onCropStart]);
   
   // Effect to handle selecting element from editorState
   useEffect(() => {
@@ -406,6 +421,41 @@ const Canvas: React.FC<CanvasProps> = ({
     canvasStyle.margin = 'auto';
   }
   
+  // Calculate background image style with crop
+  const backgroundStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  };
+
+  // If we have crop settings, apply them to the background image
+  if (editorState.cropSettings) {
+    const { x, y, width, height } = editorState.cropSettings;
+    backgroundStyle.objectFit = 'none';
+    backgroundStyle.objectPosition = `${-x}px ${-y}px`;
+    backgroundStyle.width = `${width}px`;
+    backgroundStyle.height = `${height}px`;
+    backgroundStyle.transform = 'scale(1)';
+    backgroundStyle.maxWidth = 'none';
+    backgroundStyle.maxHeight = 'none';
+  }
+  
+  // Show the crop interface if in cropping mode
+  if (editorState.isCropping && editorState.backgroundImage) {
+    return (
+      <ImageCropper
+        imageSrc={editorState.backgroundImage}
+        canvasWidth={editorState.canvasDimensions?.width || 1080}
+        canvasHeight={editorState.canvasDimensions?.height || 1080}
+        initialCrop={editorState.cropSettings}
+        onApplyCrop={onCropApply}
+        onCancelCrop={onCropCancel}
+      />
+    );
+  }
+  
   return (
     <div className="editor-canvas-container relative w-full h-full flex items-center justify-center bg-gray-800 overflow-auto">
       <div
@@ -422,8 +472,9 @@ const Canvas: React.FC<CanvasProps> = ({
           <img
             src={editorState.backgroundImage}
             alt="Background"
-            className="absolute inset-0 w-full h-full object-cover"
-            crossOrigin="anonymous" // Add cross-origin attribute for external images
+            className="absolute inset-0"
+            crossOrigin="anonymous"
+            style={backgroundStyle}
           />
         )}
         

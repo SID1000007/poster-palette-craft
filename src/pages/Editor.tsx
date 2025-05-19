@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat } from '../types';
+import { EditorState, EditorElement, ToolType, SocialPlatform, PostFormat, CropSettings } from '../types';
 import Canvas from '../components/Canvas';
 import Toolbar from '../components/Toolbar';
 import OverlayControls from '../components/OverlayControls';
@@ -28,6 +29,7 @@ const Editor = () => {
     overlayOpacity: 0.3,
     elements: [],
     selectedElementId: null,
+    isCropping: false,
     canvasDimensions: {
       width: 1080,
       height: 1080,
@@ -193,6 +195,33 @@ const Editor = () => {
     });
   };
 
+  // Crop handling functions
+  const handleCropStart = () => {
+    setEditorState(prevState => ({
+      ...prevState,
+      isCropping: true,
+    }));
+    toast.info("Drag or resize the crop box to select the area you want to include");
+  };
+
+  const handleCropApply = (cropSettings: CropSettings) => {
+    setEditorState(prevState => ({
+      ...prevState,
+      cropSettings,
+      isCropping: false,
+    }));
+    setActiveTool('select');
+    toast.success("Image cropped successfully");
+  };
+
+  const handleCropCancel = () => {
+    setEditorState(prevState => ({
+      ...prevState,
+      isCropping: false,
+    }));
+    setActiveTool('select');
+  };
+
   // Handle preview modal
   const handleShowPreview = () => {
     setShowPreview(true);
@@ -200,28 +229,27 @@ const Editor = () => {
 
   // Handle poster download
   const handleDownload = async () => {
-    if (!canvasRef.current) return;
+    let targetElement: HTMLElement | null;
+      
+    // If we're in preview mode, use the preview element
+    if (showPreview) {
+      targetElement = document.querySelector('.preview-canvas');
+    } else {
+      // Show preview before downloading
+      setShowPreview(true);
+      return;
+    }
+    
+    if (!targetElement) {
+      toast.error("Could not find canvas element");
+      return;
+    }
     
     try {
       toast("Preparing your poster for download...");
       
-      // Find the actual canvas element inside our container
-      let targetElement: HTMLElement | null;
-      
-      // If we're in preview mode, use the preview element
-      if (showPreview) {
-        targetElement = document.querySelector('.preview-canvas');
-      } else {
-        targetElement = canvasRef.current.querySelector('.editor-canvas');
-      }
-      
-      if (!targetElement) {
-        toast.error("Could not find canvas element");
-        return;
-      }
-      
       // Temporarily hide selection borders and resize handles for screenshot
-      const selectedElements = document.querySelectorAll('.editor-element, .preview-element');
+      const selectedElements = document.querySelectorAll('.preview-element');
       const originalStyles = Array.from(selectedElements).map(el => {
         const element = el as HTMLElement;
         const style = {
@@ -231,12 +259,6 @@ const Editor = () => {
         element.style.border = 'none';
         element.style.outline = 'none';
         return style;
-      });
-      
-      // Also hide resize handles
-      const resizeHandles = document.querySelectorAll('.resize-handle');
-      resizeHandles.forEach(handle => {
-        (handle as HTMLElement).style.display = 'none';
       });
       
       // Use html2canvas with improved settings for more accurate rendering
@@ -253,11 +275,7 @@ const Editor = () => {
         x: 0,
         y: 0,
         width: targetElement.offsetWidth,
-        height: targetElement.offsetHeight,
-        // Ensure everything is captured properly
-        ignoreElements: (element) => {
-          return element.classList.contains('resize-handle');
-        }
+        height: targetElement.offsetHeight
       });
       
       // Restore selection borders and outlines
@@ -265,11 +283,6 @@ const Editor = () => {
         const element = el as HTMLElement;
         element.style.border = originalStyles[i].border;
         element.style.outline = originalStyles[i].outline;
-      });
-      
-      // Restore resize handles
-      resizeHandles.forEach(handle => {
-        (handle as HTMLElement).style.display = 'block';
       });
       
       // Convert canvas to blob
@@ -296,10 +309,8 @@ const Editor = () => {
         URL.revokeObjectURL(link.href);
         toast.success("Poster downloaded successfully!");
         
-        // Close preview if open
-        if (showPreview) {
-          setShowPreview(false);
-        }
+        // Close preview after download
+        setShowPreview(false);
       }, 'image/png', 1.0); // Higher quality PNG
       
     } catch (error) {
@@ -347,6 +358,9 @@ const Editor = () => {
               onElementAdd={handleElementAdd}
               onElementRemove={handleElementRemove}
               onLayerUpdate={handleLayerUpdate}
+              onCropStart={handleCropStart}
+              onCropApply={handleCropApply}
+              onCropCancel={handleCropCancel}
             />
           </div>
         </div>
@@ -363,7 +377,8 @@ const Editor = () => {
             selectedDimension={editorState.canvasDimensions ? {
               width: editorState.canvasDimensions.width,
               height: editorState.canvasDimensions.height,
-              name: editorState.canvasDimensions.name
+              name: editorState.canvasDimensions.name,
+              aspectRatio: `${editorState.canvasDimensions.width}:${editorState.canvasDimensions.height}`
             } : undefined}
           />
           
@@ -421,15 +436,21 @@ const Editor = () => {
             </div>
           ) : (
             <div className="text-muted-foreground p-4 bg-muted rounded-lg mt-6">
-              <p>Select an element or use the toolbar to add new elements.</p>
-              <p className="mt-2">Keyboard shortcuts:</p>
-              <ul className="mt-2 list-disc pl-5">
-                <li>Delete/Backspace: Delete selected element</li>
-                <li>Ctrl + [: Move backward</li>
-                <li>Ctrl + ]: Move forward</li>
-                <li>Ctrl + {"{{"}: Send to back</li>
-                <li>Ctrl + {"}}"}: Bring to front</li>
-              </ul>
+              {activeTool === 'crop' ? (
+                <p>Use the crop tool to select which part of the image you want to include in your poster.</p>
+              ) : (
+                <>
+                  <p>Select an element or use the toolbar to add new elements.</p>
+                  <p className="mt-2">Keyboard shortcuts:</p>
+                  <ul className="mt-2 list-disc pl-5">
+                    <li>Delete/Backspace: Delete selected element</li>
+                    <li>Ctrl + [: Move backward</li>
+                    <li>Ctrl + ]: Move forward</li>
+                    <li>Ctrl + {"{{"}: Send to back</li>
+                    <li>Ctrl + {"}}"}: Bring to front</li>
+                  </ul>
+                </>
+              )}
             </div>
           )}
         </div>
